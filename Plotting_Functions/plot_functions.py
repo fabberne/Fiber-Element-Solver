@@ -39,7 +39,7 @@ def plot_stress_strain_steel(analysis):
 	strains.axes.get_yaxis().set_ticks([])
 	strains.set_aspect('equal')
 
-	# Normalize strains for color mapping
+	# Normalize stresses for color mapping
 	max_strain = max(abs(min(analysis.stresses)), abs(max(analysis.stresses)))
 	norm = colors.TwoSlopeNorm(vmin=-max_strain, vcenter=0, vmax=max_strain)
 	cmap = plt.colormaps.get_cmap('coolwarm')
@@ -116,7 +116,7 @@ def plot_stress_strain_RC(analysis):
     strains.axes.get_yaxis().set_ticks([])
     strains.set_aspect('equal')
 
-    # Normalize strains for color mapping
+    # Normalize stresses for color mapping
     max_rebar_stress = max(abs(min(analysis.stresses[analysis.material_groups["Rebar_B500B"]])), 
                             abs(max(analysis.stresses[analysis.material_groups["Rebar_B500B"]])))
     max_concrete_stress = max(abs(min(analysis.stresses[analysis.material_groups["Concrete_C30_37"]])),
@@ -208,7 +208,6 @@ def plot_influence_of_N_on_M(analysis, N, My_lim, Mz_lim, symetric=True):
     My = np.linspace(My_lim[0], My_lim[1], 501)
     colors = ['C0', 'C1', 'C2', 'C3', 'C4']
 
-    # Plotting the results
     fig, (my, mz) = plt.subplots(1,2, figsize=(8, 3))
     for j, target_N in enumerate(N):
         xsi = []
@@ -254,19 +253,17 @@ def plot_influence_of_N_on_M(analysis, N, My_lim, Mz_lim, symetric=True):
 def plot_influence_of_Mz_on_My(analysis, My_lim, Mz, symetric=True):
     My = np.linspace(My_lim[0], My_lim[1], 1001)
 
-    # Plotting the results
     plt.figure(figsize=(5, 4))
     for target_Mz in Mz:
         xsi = []
         M_res = []
         for i, M in enumerate(My):
             target_My = M
-            initial_guess = [0.0, 0.0, 0.0]  # Initial guess for eps and xsi
-            # Solve with fsolve
+            initial_guess = [0.0, 0.0, 0.0]
             result = fsolve(analysis.system_of_equations, initial_guess, args=(0, target_My, target_Mz), full_output=1)
             # Check if the solution converged
             if result[2] == 1:
-                xsi.append(result[0][1])  # Append the xsi value
+                xsi.append(result[0][1])
                 M_res.append(M)
         plt.plot([x * 1000 for x in xsi], M_res,linestyle='-', label=f'$M_z$ = {target_Mz} kNm')
 
@@ -358,13 +355,16 @@ def plot_displaced_structure(solver, scale=20.0):
     plt.show()
 
 def plot_moments(steps, section_forces, section_strains, non_linear_solver, length):
-     	# Example input: replace with your actual values
-	x = np.array((non_linear_solver.structure.beam_elements[0].gauss_points + 1)/2 * length)  # positions along the cantilever (in meters)
+    # extract the positioning of the cross sections along the beam
+	x = np.array((non_linear_solver.structure.beam_elements[0].gauss_points + 1)/2 * length) 
+     
+    # extract the cuvatures at each section for the given load factor steps
+    # section_strains[load factor, ID of the beam element, ID of the section, [chi_z, chi_y, delta]]
 	kappa_50 = np.array(section_strains[steps[0],0,:,1])  # curvature at each x (in 1/m)
 	kappa_100 = np.array(section_strains[steps[1],0,:,1])  # curvature at each x (in 1/m)
 	kappa_399 = np.array(section_strains[steps[2],0,:,1])  # curvature at each x (in 1/m)
 
-	# First integration: slope (rotation)
+	# First integration: rotation
 	theta_50 = np.zeros_like(x)
 	theta_100 = np.zeros_like(x)
 	theta_399 = np.zeros_like(x)
@@ -388,7 +388,7 @@ def plot_moments(steps, section_forces, section_strains, non_linear_solver, leng
 	fig, (curv, rot, defl, moment) = plt.subplots(1,4, figsize=(10, 4))
 
 
-	# Optional: plot the results
+	# plot the results
 	curv.plot(kappa_50, x, zorder=4, color="C0")
 	curv.plot(kappa_100, x, zorder=3, color="C1")
 	curv.plot(kappa_399, x, zorder=2, color="C2")
@@ -423,9 +423,13 @@ def plot_moments(steps, section_forces, section_strains, non_linear_solver, leng
 	defl.set_xlim(-min(v_399)*1.2, min(v_399)*1.2)
 	defl.grid()
 
+    # extract the bending moments at each section for the given load factor steps
+    # section_forces[load factor, ID of the beam element, ID of the section, [M_z, M_y, N]]
 	My_50 = section_forces[steps[0],0,:,1] / 1000 / 1000
 	My_100 = section_forces[steps[1],0,:,1] / 1000 / 1000
 	My_399 = section_forces[steps[2],0,:,1] / 1000 / 1000
+    
+    # plot the results
 	moment.plot(My_50, x, zorder=4, color="C0", label="400 kN")
 	moment.plot(My_100, x, zorder=3, color="C1", label="525 kN")
 	moment.plot(My_399, x, zorder=2, color="C2", label="650 kN")
